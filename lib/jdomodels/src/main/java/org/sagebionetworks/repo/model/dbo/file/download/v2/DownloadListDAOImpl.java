@@ -32,10 +32,13 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -66,6 +69,7 @@ import org.sagebionetworks.util.ValidateArgument;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -555,9 +559,35 @@ public class DownloadListDAOImpl implements DownloadListDAO {
 	@Override
 	public List<DownloadListItem> filterUnsupportedTypes(List<DownloadListItem> batch) {
 		ValidateArgument.required(batch, "batch");
-		
+
 		if(batch.isEmpty()) {
 			return Collections.emptyList();
+		}
+
+		Set<Long> allIds = batch.stream().map(i -> KeyFactory.stringToKey(i.getFileEntityId()))
+			.collect(Collectors.toSet());
+
+		MapSqlParameterSource params = new MapSqlParameterSource();
+
+		params.addValue("ids", allIds);
+		params.addValue("fileTypes", EntityTypeUtils.getFileTypes().stream().map(EntityType::name).collect(Collectors.toList()));
+
+		Set<Long> fileIds = new HashSet<>(namedJdbcTemplate.queryForList("SELECT " + COL_NODE_ID + " FROM " + TABLE_NODE
+				+ " WHERE " + COL_NODE_ID + " IN (:ids) AND " + COL_NODE_TYPE + " IN (:fileTypes)",
+				params, Long.class));
+
+		return batch.stream().filter(i -> fileIds.contains(KeyFactory.stringToKey(i.getFileEntityId())))
+				.collect(Collectors.toList());
+	}
+
+	@Override
+	public Map<EntityType, List<DownloadListItem>> groupItemsByType(List<DownloadListItem> batch, Set<EntityType> types) {
+		ValidateArgument.required(batch, "batch");
+		ValidateArgument.required(types, "types");
+		
+		// An empty set of types matches nothing, and would otherwise render 'IN ()'.
+		if(batch.isEmpty() || types.isEmpty()) {
+			return Collections.emptyMap();
 		}
 		
 		Set<Long> allIds = batch.stream().map(i -> KeyFactory.stringToKey(i.getFileEntityId()))
@@ -566,14 +596,27 @@ public class DownloadListDAOImpl implements DownloadListDAO {
 		MapSqlParameterSource params = new MapSqlParameterSource();
 		
 		params.addValue("ids", allIds);
-		params.addValue("fileTypes", EntityTypeUtils.getFileTypes().stream().map(EntityType::name).collect(Collectors.toList()));
+		params.addValue("types", types.stream().map(EntityType::name).collect(Collectors.toList()));
 		
-		Set<Long> fileIds = new HashSet<>(namedJdbcTemplate.queryForList("SELECT " + COL_NODE_ID + " FROM " + TABLE_NODE
-				+ " WHERE " + COL_NODE_ID + " IN (:ids) AND " + COL_NODE_TYPE + " IN (:fileTypes)",
-				params, Long.class));
+		Map<Long, EntityType> idToType = new HashMap<>();
 		
-		return batch.stream().filter(i -> fileIds.contains(KeyFactory.stringToKey(i.getFileEntityId())))
-				.collect(Collectors.toList());
+		namedJdbcTemplate.query("SELECT " + COL_NODE_ID + ", " + COL_NODE_TYPE + " FROM " + TABLE_NODE
+				+ " WHERE " + COL_NODE_ID + " IN (:ids) AND " + COL_NODE_TYPE + " IN (:types)", params,
+				(RowCallbackHandler) rs -> idToType.put(rs.getLong(COL_NODE_ID),
+						EntityType.valueOf(rs.getString(COL_NODE_TYPE))));
+		
+		Map<EntityType, List<DownloadListItem>> itemsByType = new LinkedHashMap<>();
+		
+		// Iterating the batch (rather than the query results) is what gives each per-type list the
+		// same relative order as the batch, which callers rely on to preserve row order.
+		for (DownloadListItem item : batch) {
+			EntityType type = idToType.get(KeyFactory.stringToKey(item.getFileEntityId()));
+			if (type != null) {
+				itemsByType.computeIfAbsent(type, t -> new ArrayList<>()).add(item);
+			}
+		}
+		
+		return itemsByType;
 	}
 
 	@WriteTransaction
@@ -857,4 +900,80 @@ public class DownloadListDAOImpl implements DownloadListDAO {
 		);
 	}
 	
+	@Override
+	public List<EntityRef> expandDatasetCollectionRefs(List<EntityRef> collectionRefs) {
+		ValidateArgument.required(collectionRefs, "collectionRefs");
+
+		if (collectionRefs.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		String sql = "SELECT DISTINCT D." + COL_REVISION_OWNER_NODE + " AS id, D." + COL_REVISION_NUMBER + " AS version "
+				+ "FROM " + TABLE_REVISION + " AS C "
+				// Unpack the JSON array of dataset references from each collection
+				+ "JOIN JSON_TABLE(C." + COL_REVISION_ITEMS + ", '$[*]' COLUMNS ("
+					// The entityId might be stored with the 'syn' prefix
+					+ "id VARCHAR(30) PATH '$.entityId', "
+					+ "version BIGINT PATH '$.versionNumber')"
+				+ ") AS D_REF "
+				// Joining back to the referenced revision drops items that do not resolve to a real
+				// revision, rather than letting a null or non-numeric entityId/versionNumber become
+				// entity 0 / version 0.
+				+ "JOIN " + TABLE_REVISION + " AS D ON ("
+					+ "D." + COL_REVISION_OWNER_NODE + " = CAST(REPLACE(D_REF.id, 'syn', '') AS UNSIGNED) AND "
+					+ "D." + COL_REVISION_NUMBER + " = D_REF.version) "
+				+ "WHERE (C." + COL_REVISION_OWNER_NODE + ", C." + COL_REVISION_NUMBER + ") IN (:collections)";
+
+		Map<String, ?> params = Map.of("collections", toIdAndVersionParam(collectionRefs));
+
+		return namedJdbcTemplate.query(sql, params, (rs, rowNum) -> new EntityRef()
+				.setEntityId(KeyFactory.keyToString(rs.getLong("id")))
+				.setVersionNumber(rs.getLong("version")));
+	}
+
+	@Override
+	public long countFileRefsInDatasets(List<EntityRef> fileRefs, List<EntityRef> datasetRefs) {
+		ValidateArgument.required(fileRefs, "fileRefs");
+		ValidateArgument.required(datasetRefs, "datasetRefs");
+
+		if (fileRefs.isEmpty() || datasetRefs.isEmpty()) {
+			return 0L;
+		}
+
+		// COUNT(DISTINCT ...) because a file may be a member of several of the given datasets, and the
+		// member count this result is subtracted from also counts each file once.
+		String sql = "SELECT COUNT(DISTINCT D_FILES." + COL_REVISION_OWNER_NODE + ", D_FILES." + COL_REVISION_NUMBER + ") "
+				+ "FROM " + TABLE_REVISION + " AS D "
+				// Unpack the JSON array of file references from each dataset
+				+ "JOIN JSON_TABLE(D." + COL_REVISION_ITEMS + ", '$[*]' COLUMNS ("
+					// The entityId might be stored with the 'syn' prefix
+					+ "id VARCHAR(30) PATH '$.entityId', "
+					+ "version BIGINT PATH '$.versionNumber')"
+				+ ") AS D_FILES_REF "
+				+ "JOIN " + TABLE_REVISION + " AS D_FILES ON ("
+					+ "D_FILES." + COL_REVISION_OWNER_NODE + " = CAST(REPLACE(D_FILES_REF.id, 'syn', '') AS UNSIGNED) AND "
+					+ "D_FILES." + COL_REVISION_NUMBER + " = D_FILES_REF.version) "
+				+ "WHERE (D." + COL_REVISION_OWNER_NODE + ", D." + COL_REVISION_NUMBER + ") IN (:datasets) "
+				+ "AND (D_FILES." + COL_REVISION_OWNER_NODE + ", D_FILES." + COL_REVISION_NUMBER + ") IN (:files)";
+
+		Map<String, ?> params = Map.of(
+			"datasets", toIdAndVersionParam(datasetRefs),
+			"files", toIdAndVersionParam(fileRefs)
+		);
+
+		return namedJdbcTemplate.queryForObject(sql, params, Long.class);
+	}
+
+	/**
+	 * Convert the given refs into the row-value tuples expected by a {@code (ID, VERSION) IN (:param)}
+	 * predicate.
+	 *
+	 * @param refs
+	 * @return
+	 */
+	private static List<Long[]> toIdAndVersionParam(List<EntityRef> refs) {
+		return refs.stream().map(ref -> new Long[] { KeyFactory.stringToKey(ref.getEntityId()), ref.getVersionNumber() })
+				.collect(Collectors.toList());
+	}
+
 }

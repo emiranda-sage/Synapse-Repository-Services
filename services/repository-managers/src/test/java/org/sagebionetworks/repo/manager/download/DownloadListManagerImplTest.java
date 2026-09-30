@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.AdditionalAnswers.returnsFirstArg;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -34,6 +33,7 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -70,6 +70,7 @@ import org.sagebionetworks.repo.model.NextPageToken;
 import org.sagebionetworks.repo.model.NodeConstants;
 import org.sagebionetworks.repo.model.NodeConstants.BOOTSTRAP_NODES;
 import org.sagebionetworks.repo.model.NodeDAO;
+import org.sagebionetworks.repo.model.Reference;
 import org.sagebionetworks.repo.model.UnauthorizedException;
 import org.sagebionetworks.repo.model.UserInfo;
 import org.sagebionetworks.repo.model.auth.AuthorizationStatus;
@@ -1276,7 +1277,8 @@ public class DownloadListManagerImplTest {
 		when(mockTableQueryManager.querySinglePage(any(), any(), any(), any())).thenReturn(
 				new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(rows))));
 		when(mockDownloadListDao.addBatchOfFilesToDownloadList(anyLong(), any())).thenReturn(filesAdded);
-		when(mockDownloadListDao.filterUnsupportedTypes(any())).thenAnswer(returnsFirstArg());
+		when(mockDownloadListDao.groupItemsByType(any(), any()))
+				.thenAnswer(invocation -> Map.of(EntityType.file, (List<DownloadListItem>) invocation.getArgument(0)));
 
 		Query query = new Query().setSql("select * from syn123");
 		boolean userVersion = true;
@@ -1312,7 +1314,8 @@ public class DownloadListManagerImplTest {
 		when(mockTableQueryManager.querySinglePage(any(), any(), any(), any())).thenReturn(
 				new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(rows))));
 		when(mockDownloadListDao.addBatchOfFilesToDownloadList(anyLong(), any())).thenReturn(filesAdded);
-		when(mockDownloadListDao.filterUnsupportedTypes(any())).then(returnsFirstArg());
+		when(mockDownloadListDao.groupItemsByType(any(), any()))
+				.thenAnswer(invocation -> Map.of(EntityType.file, (List<DownloadListItem>) invocation.getArgument(0)));
 		
 		Query query = new Query().setSql("select * from syn123");
 		boolean userVersion = false;
@@ -1348,7 +1351,8 @@ public class DownloadListManagerImplTest {
 		when(mockTableQueryManager.querySinglePage(any(), any(), any(), any())).thenReturn(
 				new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(rows))));
 		when(mockDownloadListDao.addBatchOfFilesToDownloadList(anyLong(), any())).thenReturn(filesAdded);
-		when(mockDownloadListDao.filterUnsupportedTypes(any())).then(returnsFirstArg());
+		when(mockDownloadListDao.groupItemsByType(any(), any()))
+				.thenAnswer(invocation -> Map.of(EntityType.file, (List<DownloadListItem>) invocation.getArgument(0)));
 
 		Query query = new Query().setSql("select * from syn123");
 		boolean userVersion = true;
@@ -1384,7 +1388,8 @@ public class DownloadListManagerImplTest {
 		when(mockTableQueryManager.querySinglePage(any(), any(), any(), any())).thenReturn(
 				new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(rows))));
 		when(mockDownloadListDao.addBatchOfFilesToDownloadList(anyLong(), any())).thenReturn(filesAdded);
-		when(mockDownloadListDao.filterUnsupportedTypes(any())).then(returnsFirstArg());
+		when(mockDownloadListDao.groupItemsByType(any(), any()))
+				.thenAnswer(invocation -> Map.of(EntityType.file, (List<DownloadListItem>) invocation.getArgument(0)));
 
 		Query query = new Query().setSql("select * from syn123").setSelectFileColumn(123L);
 		boolean userVersion = false;
@@ -1418,7 +1423,8 @@ public class DownloadListManagerImplTest {
 		when(mockTableQueryManager.querySinglePage(any(), any(), any(), any())).thenReturn(
 				new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(rows))));
 		when(mockDownloadListDao.addBatchOfFilesToDownloadList(anyLong(), any())).thenReturn(filesAdded);
-		when(mockDownloadListDao.filterUnsupportedTypes(any())).then(returnsFirstArg());
+		when(mockDownloadListDao.groupItemsByType(any(), any()))
+				.thenAnswer(invocation -> Map.of(EntityType.file, (List<DownloadListItem>) invocation.getArgument(0)));
 
 		Query query = new Query().setSql("select * from syn123").setSelectFileColumn(123L);
 		boolean userVersion = true;
@@ -1459,7 +1465,8 @@ public class DownloadListManagerImplTest {
 		);
 		
 		when(mockDownloadListDao.addBatchOfFilesToDownloadList(anyLong(), any())).thenReturn(filesAdded);
-		when(mockDownloadListDao.filterUnsupportedTypes(any())).then(returnsFirstArg());
+		when(mockDownloadListDao.groupItemsByType(any(), any()))
+				.thenAnswer(invocation -> Map.of(EntityType.file, (List<DownloadListItem>) invocation.getArgument(0)));
 
 		Query query = new Query().setSql("select * from syn123")
 			.setSelectFileColumn(123L)
@@ -1504,7 +1511,8 @@ public class DownloadListManagerImplTest {
 		when(mockTableQueryManager.querySinglePage(any(), any(), any(), any())).thenReturn(
 				new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(rows))));
 		when(mockDownloadListDao.addBatchOfFilesToDownloadList(anyLong(), any())).thenReturn(3L);
-		when(mockDownloadListDao.filterUnsupportedTypes(any())).then(returnsFirstArg());
+		when(mockDownloadListDao.groupItemsByType(any(), any()))
+				.thenAnswer(invocation -> Map.of(EntityType.file, (List<DownloadListItem>) invocation.getArgument(0)));
 
 		Query query = new Query().setSql("select * from syn123");
 		boolean userVersion = false;
@@ -1547,7 +1555,8 @@ public class DownloadListManagerImplTest {
 		when(mockTableQueryManager.querySinglePage(any(), any(), any(), any())).thenReturn(
 				new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(rows))));
 		when(mockDownloadListDao.addBatchOfFilesToDownloadList(anyLong(), any())).thenReturn(filesAdded);
-		when(mockDownloadListDao.filterUnsupportedTypes(any())).then(returnsFirstArg());
+		when(mockDownloadListDao.groupItemsByType(any(), any()))
+				.thenAnswer(invocation -> Map.of(EntityType.file, (List<DownloadListItem>) invocation.getArgument(0)));
 
 		Query query = new Query().setSql("select * from syn123");
 		boolean userVersion = false;
@@ -1595,7 +1604,8 @@ public class DownloadListManagerImplTest {
 				new QueryResultBundle()
 						.setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(pageThree))));
 		when(mockDownloadListDao.addBatchOfFilesToDownloadList(anyLong(), any())).thenReturn(2L, 2L, 1L);
-		when(mockDownloadListDao.filterUnsupportedTypes(any())).thenAnswer(returnsFirstArg());
+		when(mockDownloadListDao.groupItemsByType(any(), any()))
+				.thenAnswer(invocation -> Map.of(EntityType.file, (List<DownloadListItem>) invocation.getArgument(0)));
 
 		Query query = new Query().setSql("select * from syn123");
 		boolean userVersion = true;
@@ -1796,9 +1806,10 @@ public class DownloadListManagerImplTest {
 		when(mockTableQueryManager.querySinglePage(any(), any(), any(), any())).thenReturn(
 				new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(rows))));
 		when(mockDownloadListDao.addBatchOfFilesToDownloadList(anyLong(), any())).thenReturn(filesAdded);
-		when(mockDownloadListDao.filterUnsupportedTypes(any())).thenReturn(List.of(
-			new DownloadListItem().setFileEntityId("111").setVersionNumber(1L)
-		));
+		// "222" resolves to neither a file/recordset/dataset/datasetcollection (e.g. a folder), so it
+		// is simply absent from the grouped result and must be dropped.
+		when(mockDownloadListDao.groupItemsByType(any(), any())).thenReturn(Map.of(EntityType.file,
+				List.of(new DownloadListItem().setFileEntityId("111").setVersionNumber(1L))));
 
 		Query query = new Query().setSql("select * from syn123").setSelectFileColumn(123L);
 		boolean userVersion = true;
@@ -1816,6 +1827,260 @@ public class DownloadListManagerImplTest {
 		verify(mockDownloadListDao).addBatchOfFilesToDownloadList(userOne.getId(),
 			Arrays.asList(new DownloadListItem().setFileEntityId("111").setVersionNumber(1L))
 		);
+	}
+
+	@Test
+	public void testAddQueryResultsToDownloadListWithDatasetRows() throws Exception {
+		long filesAdded = 1L;
+		long datasetFilesAdded = 3L;
+		// @formatter:off
+		List<Row> rows = Arrays.asList(
+				new Row().setValues(List.of("111", "1")),
+				new Row().setValues(List.of("222", "2"))
+		);
+		// @formatter:on
+		when(mockTableManagerSupport.getTableType(any())).thenReturn(TableType.entityview);
+		when(mockTableManagerSupport.getTableSchema(any())).thenReturn(List.of(createColumn(123L, "foo", ColumnType.STRING)));
+		when(mockTableQueryManager.querySinglePage(any(), any(), any(), any())).thenReturn(
+				new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(rows))));
+
+		DownloadListItem fileItem = new DownloadListItem().setFileEntityId("111").setVersionNumber(1L);
+		DownloadListItem datasetItem = new DownloadListItem().setFileEntityId("222").setVersionNumber(2L);
+
+		when(mockDownloadListDao.groupItemsByType(any(), any()))
+				.thenReturn(Map.of(EntityType.file, List.of(fileItem), EntityType.dataset, List.of(datasetItem)));
+		when(mockDownloadListDao.addBatchOfFilesToDownloadList(anyLong(), any())).thenReturn(filesAdded);
+		when(mockDownloadListDao.addDatasetEntityRefFilesToDownloadList(anyLong(), any(), anyLong())).thenReturn(datasetFilesAdded);
+
+		Query query = new Query().setSql("select * from syn123");
+		boolean userVersion = true;
+		long maxQueryPageSize = 10L;
+		long usersDownloadListCapacity = 100L;
+		// call under test
+		AddToDownloadListResponse result = manager.addQueryResultsToDownloadList(mockProgressCallback, userOne, query,
+				userVersion, maxQueryPageSize, usersDownloadListCapacity);
+		assertEquals(new AddToDownloadListResponse().setNumberOfFilesAdded(filesAdded + datasetFilesAdded), result);
+
+		verify(mockDownloadListDao).addBatchOfFilesToDownloadList(userOne.getId(), List.of(fileItem));
+		// remainingCapacity = 100 (usersDownloadListCapacity) - 1 (filesAdded so far) + 1 = 100
+		verify(mockDownloadListDao).addDatasetEntityRefFilesToDownloadList(userOne.getId(),
+				List.of(new EntityRef().setEntityId("222").setVersionNumber(2L)), 100L);
+	}
+
+	@Test
+	public void testAddQueryResultsToDownloadListWithOnlyDatasetRows() throws Exception {
+		long datasetFilesAdded = 3L;
+		List<Row> rows = Arrays.asList(new Row().setValues(List.of("222", "2")));
+		when(mockTableManagerSupport.getTableType(any())).thenReturn(TableType.entityview);
+		when(mockTableManagerSupport.getTableSchema(any())).thenReturn(List.of(createColumn(123L, "foo", ColumnType.STRING)));
+		when(mockTableQueryManager.querySinglePage(any(), any(), any(), any())).thenReturn(
+				new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(rows))));
+
+		DownloadListItem datasetItem = new DownloadListItem().setFileEntityId("222").setVersionNumber(2L);
+		when(mockDownloadListDao.groupItemsByType(any(), any())).thenReturn(Map.of(EntityType.dataset, List.of(datasetItem)));
+		when(mockDownloadListDao.addBatchOfFilesToDownloadList(anyLong(), eq(Collections.emptyList()))).thenReturn(0L);
+		when(mockDownloadListDao.addDatasetEntityRefFilesToDownloadList(anyLong(), any(), anyLong())).thenReturn(datasetFilesAdded);
+
+		Query query = new Query().setSql("select * from syn123");
+		boolean userVersion = true;
+		long maxQueryPageSize = 10L;
+		long usersDownloadListCapacity = 100L;
+		// call under test
+		AddToDownloadListResponse result = manager.addQueryResultsToDownloadList(mockProgressCallback, userOne, query,
+				userVersion, maxQueryPageSize, usersDownloadListCapacity);
+		assertEquals(new AddToDownloadListResponse().setNumberOfFilesAdded(datasetFilesAdded), result);
+
+		// The file batch insert is unconditional, so a page of only dataset rows still calls it with an
+		// empty batch.
+		verify(mockDownloadListDao).addBatchOfFilesToDownloadList(userOne.getId(), Collections.emptyList());
+		verify(mockDownloadListDao).addDatasetEntityRefFilesToDownloadList(userOne.getId(),
+				List.of(new EntityRef().setEntityId("222").setVersionNumber(2L)), 101L);
+		// The row already carries the version, so no current-version lookup is needed.
+		verify(mockNodeDao, never()).getCurrentRevisionNumbers(any());
+	}
+
+	@Test
+	public void testAddQueryResultsToDownloadListWithDatasetCollectionRows() throws Exception {
+		long expandedDatasetFilesAdded = 5L;
+		List<Row> rows = Arrays.asList(new Row().setValues(List.of("333", "1")));
+		when(mockTableManagerSupport.getTableType(any())).thenReturn(TableType.entityview);
+		when(mockTableManagerSupport.getTableSchema(any())).thenReturn(List.of(createColumn(123L, "foo", ColumnType.STRING)));
+		when(mockTableQueryManager.querySinglePage(any(), any(), any(), any())).thenReturn(
+				new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(rows))));
+
+		DownloadListItem collectionItem = new DownloadListItem().setFileEntityId("333").setVersionNumber(1L);
+		EntityRef collectionRef = new EntityRef().setEntityId("333").setVersionNumber(1L);
+		List<EntityRef> expandedDatasetRefs = List.of(
+				new EntityRef().setEntityId("444").setVersionNumber(1L),
+				new EntityRef().setEntityId("555").setVersionNumber(2L));
+
+		when(mockDownloadListDao.groupItemsByType(any(), any())).thenReturn(Map.of(EntityType.datasetcollection, List.of(collectionItem)));
+		when(mockDownloadListDao.addBatchOfFilesToDownloadList(anyLong(), eq(Collections.emptyList()))).thenReturn(0L);
+		when(mockDownloadListDao.expandDatasetCollectionRefs(List.of(collectionRef))).thenReturn(expandedDatasetRefs);
+		when(mockDownloadListDao.addDatasetEntityRefFilesToDownloadList(anyLong(), any(), anyLong())).thenReturn(expandedDatasetFilesAdded);
+
+		Query query = new Query().setSql("select * from syn123");
+		boolean userVersion = true;
+		long maxQueryPageSize = 10L;
+		long usersDownloadListCapacity = 100L;
+		// call under test
+		AddToDownloadListResponse result = manager.addQueryResultsToDownloadList(mockProgressCallback, userOne, query,
+				userVersion, maxQueryPageSize, usersDownloadListCapacity);
+		assertEquals(new AddToDownloadListResponse().setNumberOfFilesAdded(expandedDatasetFilesAdded), result);
+
+		verify(mockDownloadListDao).expandDatasetCollectionRefs(List.of(collectionRef));
+		verify(mockDownloadListDao).addDatasetEntityRefFilesToDownloadList(userOne.getId(), expandedDatasetRefs, 101L);
+	}
+
+	@Test
+	public void testAddQueryResultsToDownloadListWithDatasetAndDatasetCollectionReferencingSameDataset() throws Exception {
+		long dedupedFilesAdded = 4L;
+		// @formatter:off
+		List<Row> rows = Arrays.asList(
+				new Row().setValues(List.of("444", "1")),  // a dataset, queried directly
+				new Row().setValues(List.of("333", "1"))   // a dataset collection referencing the same dataset
+		);
+		// @formatter:on
+		when(mockTableManagerSupport.getTableType(any())).thenReturn(TableType.entityview);
+		when(mockTableManagerSupport.getTableSchema(any())).thenReturn(List.of(createColumn(123L, "foo", ColumnType.STRING)));
+		when(mockTableQueryManager.querySinglePage(any(), any(), any(), any())).thenReturn(
+				new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(rows))));
+
+		DownloadListItem datasetItem = new DownloadListItem().setFileEntityId("444").setVersionNumber(1L);
+		DownloadListItem collectionItem = new DownloadListItem().setFileEntityId("333").setVersionNumber(1L);
+		EntityRef sharedDatasetRef = new EntityRef().setEntityId("444").setVersionNumber(1L);
+
+		when(mockDownloadListDao.groupItemsByType(any(), any())).thenReturn(
+				Map.of(EntityType.dataset, List.of(datasetItem), EntityType.datasetcollection, List.of(collectionItem)));
+		when(mockDownloadListDao.addBatchOfFilesToDownloadList(anyLong(), eq(Collections.emptyList()))).thenReturn(0L);
+		// The collection's own items also include the same dataset that was queried directly.
+		when(mockDownloadListDao.expandDatasetCollectionRefs(List.of(new EntityRef().setEntityId("333").setVersionNumber(1L))))
+				.thenReturn(List.of(sharedDatasetRef));
+		when(mockDownloadListDao.addDatasetEntityRefFilesToDownloadList(anyLong(), any(), anyLong())).thenReturn(dedupedFilesAdded);
+
+		Query query = new Query().setSql("select * from syn123");
+		boolean userVersion = true;
+		long maxQueryPageSize = 10L;
+		long usersDownloadListCapacity = 100L;
+		// call under test
+		manager.addQueryResultsToDownloadList(mockProgressCallback, userOne, query, userVersion, maxQueryPageSize,
+				usersDownloadListCapacity);
+
+		// The dataset ref appears in both the direct-query group and the expanded-collection group; it
+		// must be passed to the DAO exactly once, not twice.
+		verify(mockDownloadListDao).addDatasetEntityRefFilesToDownloadList(userOne.getId(), List.of(sharedDatasetRef), 101L);
+	}
+
+	@Test
+	public void testAddQueryResultsToDownloadListWithDatasetRowsAndUseVersionFalse() throws Exception {
+		long datasetFilesAdded = 2L;
+		List<Row> rows = Arrays.asList(new Row().setValues(List.of("222")));
+		when(mockTableManagerSupport.getTableType(any())).thenReturn(TableType.entityview);
+		when(mockTableManagerSupport.getTableSchema(any())).thenReturn(List.of(createColumn(123L, "foo", ColumnType.STRING)));
+		when(mockTableQueryManager.querySinglePage(any(), any(), any(), any())).thenReturn(
+				new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(rows))));
+
+		DownloadListItem datasetItem = new DownloadListItem().setFileEntityId("222").setVersionNumber(null);
+		when(mockDownloadListDao.groupItemsByType(any(), any())).thenReturn(Map.of(EntityType.dataset, List.of(datasetItem)));
+		when(mockDownloadListDao.addBatchOfFilesToDownloadList(anyLong(), eq(Collections.emptyList()))).thenReturn(0L);
+		when(mockNodeDao.getCurrentRevisionNumbers(List.of("222")))
+				.thenReturn(List.of(new Reference().setTargetId("222").setTargetVersionNumber(9L)));
+		when(mockDownloadListDao.addDatasetEntityRefFilesToDownloadList(anyLong(), any(), anyLong())).thenReturn(datasetFilesAdded);
+
+		Query query = new Query().setSql("select * from syn123");
+		boolean userVersion = false;
+		long maxQueryPageSize = 10L;
+		long usersDownloadListCapacity = 100L;
+		// call under test
+		manager.addQueryResultsToDownloadList(mockProgressCallback, userOne, query, userVersion, maxQueryPageSize,
+				usersDownloadListCapacity);
+
+		verify(mockNodeDao).getCurrentRevisionNumbers(List.of("222"));
+		verify(mockDownloadListDao).addDatasetEntityRefFilesToDownloadList(userOne.getId(),
+				List.of(new EntityRef().setEntityId("222").setVersionNumber(9L)), 101L);
+	}
+
+	@Test
+	public void testAddQueryResultsToDownloadListWithDatasetRowsExceedingCapacity() throws Exception {
+		List<Row> rows = Arrays.asList(new Row().setValues(List.of("222", "1")));
+		when(mockTableManagerSupport.getTableType(any())).thenReturn(TableType.entityview);
+		when(mockTableManagerSupport.getTableSchema(any())).thenReturn(List.of(createColumn(123L, "foo", ColumnType.STRING)));
+		when(mockTableQueryManager.querySinglePage(any(), any(), any(), any())).thenReturn(
+				new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(rows))));
+
+		DownloadListItem datasetItem = new DownloadListItem().setFileEntityId("222").setVersionNumber(1L);
+		when(mockDownloadListDao.groupItemsByType(any(), any())).thenReturn(Map.of(EntityType.dataset, List.of(datasetItem)));
+		when(mockDownloadListDao.addBatchOfFilesToDownloadList(anyLong(), eq(Collections.emptyList()))).thenReturn(0L);
+		// The single dataset expands into more files than the user has room for.
+		when(mockDownloadListDao.addDatasetEntityRefFilesToDownloadList(anyLong(), any(), anyLong())).thenReturn(5L);
+
+		Query query = new Query().setSql("select * from syn123");
+		boolean userVersion = true;
+		long maxQueryPageSize = 10L;
+		long usersDownloadListCapacity = 2L;
+
+		String message = assertThrows(IllegalArgumentException.class, () -> {
+			// call under test
+			manager.addQueryResultsToDownloadList(mockProgressCallback, userOne, query, userVersion, maxQueryPageSize,
+					usersDownloadListCapacity);
+		}).getMessage();
+
+		assertEquals("Adding the files from the given query to your download list would exceed the maximum number of '100000' files."
+				+ "  You currently have '99998' files on you download list.", message);
+
+		// remainingCapacity passed to the DAO must be usersDownloadListCapacity - totalFilesAddedSoFar
+		// + 1 (here: 2 - 0 + 1 = 3), so an over-capacity expansion is caught by the check above rather
+		// than silently truncated by the DAO's own LIMIT.
+		verify(mockDownloadListDao).addDatasetEntityRefFilesToDownloadList(userOne.getId(),
+				List.of(new EntityRef().setEntityId("222").setVersionNumber(1L)), 3L);
+	}
+
+	@Test
+	public void testAddQueryResultsToDownloadListWithDatasetRowOnLaterPageExceedingCapacity() throws Exception {
+		// Page one exactly fills the user's remaining capacity, which is not itself over the limit, so
+		// the scan continues. Page two then breaches it with plain file rows before its dataset row is
+		// reached - the point at which the remaining capacity would go negative.
+		List<Row> pageOneRows = Arrays.asList(new Row().setValues(List.of("111", "1")),
+				new Row().setValues(List.of("222", "1")), new Row().setValues(List.of("333", "1")));
+		List<Row> pageTwoRows = Arrays.asList(new Row().setValues(List.of("444", "1")),
+				new Row().setValues(List.of("555", "1")), new Row().setValues(List.of("666", "1")));
+
+		when(mockTableManagerSupport.getTableType(any())).thenReturn(TableType.entityview);
+		when(mockTableManagerSupport.getTableSchema(any())).thenReturn(List.of(createColumn(123L, "foo", ColumnType.STRING)));
+		when(mockTableQueryManager.querySinglePage(any(), any(), any(), any())).thenReturn(
+				new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(pageOneRows))),
+				new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(pageTwoRows))));
+
+		List<DownloadListItem> pageOneFiles = List.of(new DownloadListItem().setFileEntityId("111").setVersionNumber(1L),
+				new DownloadListItem().setFileEntityId("222").setVersionNumber(1L),
+				new DownloadListItem().setFileEntityId("333").setVersionNumber(1L));
+		List<DownloadListItem> pageTwoFiles = List.of(new DownloadListItem().setFileEntityId("444").setVersionNumber(1L),
+				new DownloadListItem().setFileEntityId("555").setVersionNumber(1L));
+		DownloadListItem pageTwoDataset = new DownloadListItem().setFileEntityId("666").setVersionNumber(1L);
+
+		when(mockDownloadListDao.groupItemsByType(any(), any())).thenReturn(
+				Map.of(EntityType.file, pageOneFiles),
+				Map.of(EntityType.file, pageTwoFiles, EntityType.dataset, List.of(pageTwoDataset)));
+		when(mockDownloadListDao.addBatchOfFilesToDownloadList(anyLong(), any())).thenReturn(3L, 2L);
+
+		Query query = new Query().setSql("select * from syn123");
+		boolean userVersion = true;
+		long maxQueryPageSize = 10L;
+		long usersDownloadListCapacity = 3L;
+
+		String message = assertThrows(IllegalArgumentException.class, () -> {
+			// call under test
+			manager.addQueryResultsToDownloadList(mockProgressCallback, userOne, query, userVersion, maxQueryPageSize,
+					usersDownloadListCapacity);
+		}).getMessage();
+
+		assertEquals("Adding the files from the given query to your download list would exceed the maximum number of '100000' files."
+				+ "  You currently have '99997' files on you download list.", message);
+
+		// The capacity breach is reported before any expansion is attempted, so the dataset DAO is
+		// never handed a negative limit.
+		verify(mockDownloadListDao, never()).addDatasetEntityRefFilesToDownloadList(anyLong(), any(), anyLong());
+		verify(mockNodeDao, never()).getCurrentRevisionNumbers(any());
 	}
 
 	@Test
@@ -2504,57 +2769,547 @@ public class DownloadListManagerImplTest {
 	@Test
 	public void testGetAddToDownloadListStatsWithQuery() throws Exception {
 
-		Query query = new Query();
-		
+		Query query = new Query().setSql("select * from syn123");
+
 		AddToDownloadListStatsRequest request = new AddToDownloadListStatsRequest().setRequest(
 			addRequest.setQuery(query)
 		);
-		
+
+		// The index is asked only for the file size sum. The count is derived from the row scan below,
+		// so that it cannot disagree with the rows the add path would actually resolve.
 		QueryOptions expectedOptions = new QueryOptions()
-			.withRunCount(true)
 			.withRunSumFileSizes(true);
-		
+
 		when(mockTableQueryManager.querySinglePage(mockProgressCallback, userOne, query, expectedOptions))
-			.thenReturn(new QueryResultBundle().setQueryCount(10L).setSumFileSizes(new SumFileSizes().setSumFileSizesBytes(1300L).setGreaterThan(false)));
-		
-		// Call under test
+			.thenReturn(new QueryResultBundle().setSumFileSizes(new SumFileSizes().setSumFileSizesBytes(1300L).setGreaterThan(false)));
+
+		// Scanning the rewritten query finds two plain file rows and no Dataset/DatasetCollection rows.
+		when(mockTableManagerSupport.getTableType(any())).thenReturn(TableType.entityview);
+		when(mockTableManagerSupport.getTableSchema(any())).thenReturn(List.of(createColumn(123L, "foo", ColumnType.STRING)));
+		when(mockTableQueryManager.querySinglePage(any(), any(), any(), eq(new QueryOptions().withRunQuery(true))))
+			.thenReturn(new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(List.of(
+				new Row().setValues(List.of("111", "1")), new Row().setValues(List.of("222", "2")))))));
+		when(mockDownloadListDao.groupItemsByType(any(), any())).thenReturn(Map.of(EntityType.file, List.of(
+			new DownloadListItem().setFileEntityId("111").setVersionNumber(1L),
+			new DownloadListItem().setFileEntityId("222").setVersionNumber(2L))));
+
 		AddToDownloadListStatsResponse expectedResponse = new AddToDownloadListStatsResponse()
-			.setFileCount(10L)
+			.setFileCount(2L)
 			.setFileSize(1300L)
 			.setIsFileCountAndSizeEstimate(false);
-		
+
+		// Call under test
 		AddToDownloadListStatsResponse result = manager.getAddToDownloadListStats(mockProgressCallback, userOne, request);
-		
+
 		assertEquals(expectedResponse, result);
+
+		// The scan must use the same rewrite the add path uses, paged from the start of the result.
+		verify(mockTableQueryManager).querySinglePage(mockProgressCallback, userOne,
+			new Query().setSql("SELECT \"ROW_ID\", \"ROW_VERSION\" FROM syn123 ORDER BY \"ROW_ID\", \"ROW_VERSION\"")
+				.setLimit(DownloadListManagerImpl.MAX_QUERY_PAGE_SIZE).setOffset(0L),
+			new QueryOptions().withRunQuery(true));
 	}
-	
+
 	@Test
 	public void testGetAddToDownloadListStatsWithQueryAndEstimate() throws Exception {
 
-		Query query = new Query();
-		
+		Query query = new Query().setSql("select * from syn123");
+
 		AddToDownloadListStatsRequest request = new AddToDownloadListStatsRequest().setRequest(
 			addRequest.setQuery(query)
 		);
-		
+
+		// The index is asked only for the file size sum. The count is derived from the row scan below,
+		// so that it cannot disagree with the rows the add path would actually resolve.
 		QueryOptions expectedOptions = new QueryOptions()
-			.withRunCount(true)
 			.withRunSumFileSizes(true);
-		
+
 		when(mockTableQueryManager.querySinglePage(mockProgressCallback, userOne, query, expectedOptions))
-			.thenReturn(new QueryResultBundle().setQueryCount(10L).setSumFileSizes(new SumFileSizes().setSumFileSizesBytes(1300L).setGreaterThan(true)));
-		
-		// Call under test
+			.thenReturn(new QueryResultBundle().setSumFileSizes(new SumFileSizes().setSumFileSizesBytes(1300L).setGreaterThan(true)));
+
+		// The index reported its size sum as sampled, which carries through to the response.
+		when(mockTableManagerSupport.getTableType(any())).thenReturn(TableType.entityview);
+		when(mockTableManagerSupport.getTableSchema(any())).thenReturn(List.of(createColumn(123L, "foo", ColumnType.STRING)));
+		when(mockTableQueryManager.querySinglePage(any(), any(), any(), eq(new QueryOptions().withRunQuery(true))))
+			.thenReturn(new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(List.of(
+				new Row().setValues(List.of("111", "1")))))));
+		when(mockDownloadListDao.groupItemsByType(any(), any())).thenReturn(Map.of(EntityType.file,
+			List.of(new DownloadListItem().setFileEntityId("111").setVersionNumber(1L))));
+
 		AddToDownloadListStatsResponse expectedResponse = new AddToDownloadListStatsResponse()
-			.setFileCount(10L)
+			.setFileCount(1L)
 			.setFileSize(1300L)
 			.setIsFileCountAndSizeEstimate(true);
-		
+
+		// Call under test
 		AddToDownloadListStatsResponse result = manager.getAddToDownloadListStats(mockProgressCallback, userOne, request);
-		
+
 		assertEquals(expectedResponse, result);
 	}
-	
+
+	@Test
+	public void testGetAddToDownloadListStatsWithQueryAndDatasetRows() throws Exception {
+
+		Query query = new Query().setSql("select * from syn123");
+
+		AddToDownloadListStatsRequest request = new AddToDownloadListStatsRequest().setRequest(
+			addRequest.setQuery(query)
+		);
+
+		// The index is asked only for the file size sum. The count is derived from the row scan below,
+		// so that it cannot disagree with the rows the add path would actually resolve.
+		QueryOptions expectedOptions = new QueryOptions()
+			.withRunSumFileSizes(true);
+
+		when(mockTableQueryManager.querySinglePage(mockProgressCallback, userOne, query, expectedOptions))
+			.thenReturn(new QueryResultBundle().setSumFileSizes(new SumFileSizes().setSumFileSizesBytes(1300L).setGreaterThan(false)));
+
+		when(mockTableManagerSupport.getTableType(any())).thenReturn(TableType.entityview);
+		when(mockTableManagerSupport.getTableSchema(any())).thenReturn(List.of(createColumn(123L, "foo", ColumnType.STRING)));
+
+		// A mixed page: one plain file row plus two Dataset rows.
+		DownloadListItem fileItem = new DownloadListItem().setFileEntityId("111").setVersionNumber(1L);
+		DownloadListItem datasetOne = new DownloadListItem().setFileEntityId("222").setVersionNumber(1L);
+		DownloadListItem datasetTwo = new DownloadListItem().setFileEntityId("333").setVersionNumber(2L);
+
+		when(mockTableQueryManager.querySinglePage(any(), any(), any(), eq(new QueryOptions().withRunQuery(true))))
+			.thenReturn(new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(List.of(
+				new Row().setValues(List.of("111", "1")), new Row().setValues(List.of("222", "1")),
+				new Row().setValues(List.of("333", "2")))))));
+		when(mockDownloadListDao.groupItemsByType(any(), any()))
+			.thenReturn(Map.of(EntityType.file, List.of(fileItem), EntityType.dataset, List.of(datasetOne, datasetTwo)));
+
+		List<EntityRef> expectedRefs = List.of(
+				new EntityRef().setEntityId("222").setVersionNumber(1L),
+				new EntityRef().setEntityId("333").setVersionNumber(2L));
+		when(mockDownloadListDao.getAddDatasetEntityRefFilesToDownloadListStats(expectedRefs))
+			.thenReturn(new AddToDownloadListStatsResponse().setFileCount(5L).setFileSize(999L).setIsFileCountAndSizeEstimate(false));
+
+		// fileCount = the one file row + the 5 files the two datasets expand to.
+		// fileSize is the index sum untouched: a Dataset's replication row already carries the
+		// aggregate size of its member files, so adding the expansion's size would double count.
+		AddToDownloadListStatsResponse expectedResponse = new AddToDownloadListStatsResponse()
+			.setFileCount(6L)
+			.setFileSize(1300L)
+			.setIsFileCountAndSizeEstimate(false);
+
+		// Call under test
+		AddToDownloadListStatsResponse result = manager.getAddToDownloadListStats(mockProgressCallback, userOne, request);
+
+		assertEquals(expectedResponse, result);
+		// Only the count needs the expansion here, so the DAO is not asked for a size a second time.
+		verify(mockDownloadListDao, times(1)).getAddDatasetEntityRefFilesToDownloadListStats(any());
+	}
+
+	@Test
+	public void testGetAddToDownloadListStatsWithQueryAndDatasetCollectionRows() throws Exception {
+
+		Query query = new Query().setSql("select * from syn123");
+
+		AddToDownloadListStatsRequest request = new AddToDownloadListStatsRequest().setRequest(
+			addRequest.setQuery(query)
+		);
+
+		// The index is asked only for the file size sum. The count is derived from the row scan below,
+		// so that it cannot disagree with the rows the add path would actually resolve.
+		QueryOptions expectedOptions = new QueryOptions()
+			.withRunSumFileSizes(true);
+
+		when(mockTableQueryManager.querySinglePage(mockProgressCallback, userOne, query, expectedOptions))
+			.thenReturn(new QueryResultBundle().setSumFileSizes(new SumFileSizes().setSumFileSizesBytes(1300L).setGreaterThan(false)));
+
+		when(mockTableManagerSupport.getTableType(any())).thenReturn(TableType.entityview);
+		when(mockTableManagerSupport.getTableSchema(any())).thenReturn(List.of(createColumn(123L, "foo", ColumnType.STRING)));
+
+		// A page with one plain file row plus one DatasetCollection row.
+		DownloadListItem fileItem = new DownloadListItem().setFileEntityId("111").setVersionNumber(1L);
+		DownloadListItem collectionItem = new DownloadListItem().setFileEntityId("333").setVersionNumber(1L);
+		EntityRef collectionRef = new EntityRef().setEntityId("333").setVersionNumber(1L);
+		List<EntityRef> expandedDatasetRefs = List.of(
+				new EntityRef().setEntityId("444").setVersionNumber(1L),
+				new EntityRef().setEntityId("555").setVersionNumber(2L));
+
+		when(mockTableQueryManager.querySinglePage(any(), any(), any(), eq(new QueryOptions().withRunQuery(true))))
+			.thenReturn(new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(List.of(
+				new Row().setValues(List.of("111", "1")), new Row().setValues(List.of("333", "1")))))));
+		when(mockDownloadListDao.groupItemsByType(any(), any())).thenReturn(
+				Map.of(EntityType.file, List.of(fileItem), EntityType.datasetcollection, List.of(collectionItem)));
+		when(mockDownloadListDao.expandDatasetCollectionRefs(List.of(collectionRef))).thenReturn(expandedDatasetRefs);
+		when(mockDownloadListDao.getAddDatasetEntityRefFilesToDownloadListStats(expandedDatasetRefs))
+			.thenReturn(new AddToDownloadListStatsResponse().setFileCount(7L).setFileSize(500L).setIsFileCountAndSizeEstimate(false));
+
+		// fileCount = the one file row + the 7 files reachable through the collection.
+		// fileSize = the index sum (1300) PLUS the collection's expanded size (500), because unlike a
+		// Dataset, a DatasetCollection carries no replicated aggregate size, so those bytes are absent
+		// from the index sum entirely.
+		AddToDownloadListStatsResponse expectedResponse = new AddToDownloadListStatsResponse()
+			.setFileCount(8L)
+			.setFileSize(1800L)
+			.setIsFileCountAndSizeEstimate(false);
+
+		// Call under test
+		AddToDownloadListStatsResponse result = manager.getAddToDownloadListStats(mockProgressCallback, userOne, request);
+
+		assertEquals(expectedResponse, result);
+		// The count is asked over every ref and the size over the collection-only refs, which here are
+		// the same set, so both calls carry the same list.
+		verify(mockDownloadListDao, times(2)).getAddDatasetEntityRefFilesToDownloadListStats(expandedDatasetRefs);
+	}
+
+	@Test
+	public void testGetAddToDownloadListStatsWithQueryAndOverlappingDatasetAndCollection() throws Exception {
+
+		Query query = new Query().setSql("select * from syn123");
+
+		AddToDownloadListStatsRequest request = new AddToDownloadListStatsRequest().setRequest(
+			addRequest.setQuery(query)
+		);
+
+		// The index is asked only for the file size sum. The count is derived from the row scan below,
+		// so that it cannot disagree with the rows the add path would actually resolve.
+		QueryOptions expectedOptions = new QueryOptions()
+			.withRunSumFileSizes(true);
+
+		when(mockTableQueryManager.querySinglePage(mockProgressCallback, userOne, query, expectedOptions))
+			.thenReturn(new QueryResultBundle().setSumFileSizes(new SumFileSizes().setSumFileSizesBytes(1300L).setGreaterThan(false)));
+
+		when(mockTableManagerSupport.getTableType(any())).thenReturn(TableType.entityview);
+		when(mockTableManagerSupport.getTableSchema(any())).thenReturn(List.of(createColumn(123L, "foo", ColumnType.STRING)));
+
+		// A dataset queried directly, AND a dataset collection whose items include that same dataset.
+		DownloadListItem datasetItem = new DownloadListItem().setFileEntityId("444").setVersionNumber(1L);
+		DownloadListItem collectionItem = new DownloadListItem().setFileEntityId("333").setVersionNumber(1L);
+		EntityRef sharedDatasetRef = new EntityRef().setEntityId("444").setVersionNumber(1L);
+
+		when(mockTableQueryManager.querySinglePage(any(), any(), any(), eq(new QueryOptions().withRunQuery(true))))
+			.thenReturn(new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(List.of(
+				new Row().setValues(List.of("444", "1")), new Row().setValues(List.of("333", "1")))))));
+		when(mockDownloadListDao.groupItemsByType(any(), any())).thenReturn(
+				Map.of(EntityType.dataset, List.of(datasetItem), EntityType.datasetcollection, List.of(collectionItem)));
+		when(mockDownloadListDao.expandDatasetCollectionRefs(List.of(new EntityRef().setEntityId("333").setVersionNumber(1L))))
+			.thenReturn(List.of(sharedDatasetRef));
+		when(mockDownloadListDao.getAddDatasetEntityRefFilesToDownloadListStats(List.of(sharedDatasetRef)))
+			.thenReturn(new AddToDownloadListStatsResponse().setFileCount(3L).setFileSize(200L).setIsFileCountAndSizeEstimate(false));
+
+		// fileCount = no plain file rows + the 3 files the single deduplicated dataset expands to.
+		// fileSize stays at the index sum: the shared dataset was a direct row, so its bytes are
+		// already in that sum and must NOT be added again as a collection-only contribution.
+		AddToDownloadListStatsResponse expectedResponse = new AddToDownloadListStatsResponse()
+			.setFileCount(3L)
+			.setFileSize(1300L)
+			.setIsFileCountAndSizeEstimate(false);
+
+		// Call under test
+		AddToDownloadListStatsResponse result = manager.getAddToDownloadListStats(mockProgressCallback, userOne, request);
+
+		assertEquals(expectedResponse, result);
+		// The DAO must receive the deduplicated single-ref list, not the same dataset counted twice,
+		// and exactly once - there is no collection-only ref left to price separately.
+		verify(mockDownloadListDao, times(1)).getAddDatasetEntityRefFilesToDownloadListStats(List.of(sharedDatasetRef));
+	}
+
+	@Test
+	public void testGetAddToDownloadListStatsWithQueryAndFileAlsoInDataset() throws Exception {
+
+		Query query = new Query().setSql("select * from syn123");
+
+		AddToDownloadListStatsRequest request = new AddToDownloadListStatsRequest().setRequest(
+			addRequest.setQuery(query)
+		);
+
+		when(mockTableQueryManager.querySinglePage(mockProgressCallback, userOne, query, new QueryOptions().withRunSumFileSizes(true)))
+			.thenReturn(new QueryResultBundle().setSumFileSizes(new SumFileSizes().setSumFileSizesBytes(1300L).setGreaterThan(false)));
+
+		when(mockTableManagerSupport.getTableType(any())).thenReturn(TableType.entityview);
+		when(mockTableManagerSupport.getTableSchema(any())).thenReturn(List.of(createColumn(123L, "foo", ColumnType.STRING)));
+
+		// Three plain file rows plus one Dataset row.
+		DownloadListItem fileOne = new DownloadListItem().setFileEntityId("111").setVersionNumber(1L);
+		DownloadListItem fileTwo = new DownloadListItem().setFileEntityId("112").setVersionNumber(1L);
+		DownloadListItem fileThree = new DownloadListItem().setFileEntityId("113").setVersionNumber(1L);
+		DownloadListItem dataset = new DownloadListItem().setFileEntityId("222").setVersionNumber(1L);
+
+		when(mockTableQueryManager.querySinglePage(any(), any(), any(), eq(new QueryOptions().withRunQuery(true))))
+			.thenReturn(new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(List.of(
+				new Row().setValues(List.of("111", "1")), new Row().setValues(List.of("112", "1")),
+				new Row().setValues(List.of("113", "1")), new Row().setValues(List.of("222", "1")))))));
+		when(mockDownloadListDao.groupItemsByType(any(), any())).thenReturn(Map.of(
+			EntityType.file, List.of(fileOne, fileTwo, fileThree),
+			EntityType.dataset, List.of(dataset)));
+
+		List<EntityRef> expectedDatasetRefs = List.of(new EntityRef().setEntityId("222").setVersionNumber(1L));
+		when(mockDownloadListDao.getAddDatasetEntityRefFilesToDownloadListStats(expectedDatasetRefs))
+			.thenReturn(new AddToDownloadListStatsResponse().setFileCount(2L).setFileSize(999L).setIsFileCountAndSizeEstimate(false));
+
+		List<EntityRef> expectedFileRefs = List.of(
+				new EntityRef().setEntityId("111").setVersionNumber(1L),
+				new EntityRef().setEntityId("112").setVersionNumber(1L),
+				new EntityRef().setEntityId("113").setVersionNumber(1L));
+		// One of the three file rows is also a member of the dataset.
+		when(mockDownloadListDao.countFileRefsInDatasets(expectedFileRefs, expectedDatasetRefs)).thenReturn(1L);
+
+		/*
+		 * fileCount = 3 file rows + the 2 files the dataset expands to - the 1 file counted on both
+		 * sides. The add path would insert 4 rows for this result, since the overlapping file collides
+		 * with itself on the download list's primary key.
+		 */
+		AddToDownloadListStatsResponse expectedResponse = new AddToDownloadListStatsResponse()
+			.setFileCount(4L)
+			.setFileSize(1300L)
+			.setIsFileCountAndSizeEstimate(false);
+
+		// Call under test
+		AddToDownloadListStatsResponse result = manager.getAddToDownloadListStats(mockProgressCallback, userOne, request);
+
+		assertEquals(expectedResponse, result);
+		verify(mockDownloadListDao).countFileRefsInDatasets(expectedFileRefs, expectedDatasetRefs);
+	}
+
+	@Test
+	public void testGetAddToDownloadListStatsWithQueryAndNoDatasetOrCollectionRows() throws Exception {
+
+		Query query = new Query().setSql("select * from syn123");
+
+		AddToDownloadListStatsRequest request = new AddToDownloadListStatsRequest().setRequest(
+			addRequest.setQuery(query)
+		);
+
+		// The index is asked only for the file size sum. The count is derived from the row scan below,
+		// so that it cannot disagree with the rows the add path would actually resolve.
+		QueryOptions expectedOptions = new QueryOptions()
+			.withRunSumFileSizes(true);
+
+		when(mockTableQueryManager.querySinglePage(mockProgressCallback, userOne, query, expectedOptions))
+			.thenReturn(new QueryResultBundle().setSumFileSizes(new SumFileSizes().setSumFileSizesBytes(1300L).setGreaterThan(false)));
+
+		when(mockTableManagerSupport.getTableType(any())).thenReturn(TableType.entityview);
+		when(mockTableManagerSupport.getTableSchema(any())).thenReturn(List.of(createColumn(123L, "foo", ColumnType.STRING)));
+		when(mockTableQueryManager.querySinglePage(any(), any(), any(), eq(new QueryOptions().withRunQuery(true))))
+			.thenReturn(new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(List.of(
+				new Row().setValues(List.of("111", "1")))))));
+		when(mockDownloadListDao.groupItemsByType(any(), any())).thenReturn(
+				Map.of(EntityType.file, List.of(new DownloadListItem().setFileEntityId("111").setVersionNumber(1L))));
+
+		AddToDownloadListStatsResponse expectedResponse = new AddToDownloadListStatsResponse()
+			.setFileCount(1L)
+			.setFileSize(1300L)
+			.setIsFileCountAndSizeEstimate(false);
+
+		// Call under test
+		AddToDownloadListStatsResponse result = manager.getAddToDownloadListStats(mockProgressCallback, userOne, request);
+
+		// The no-regression guard: the size comes straight from the index and the dataset expansion
+		// machinery is never invoked for a plain File-only view.
+		assertEquals(expectedResponse, result);
+		verify(mockDownloadListDao, never()).getAddDatasetEntityRefFilesToDownloadListStats(any());
+		verify(mockDownloadListDao, never()).expandDatasetCollectionRefs(any());
+	}
+
+	@Test
+	public void testGetAddToDownloadListStatsWithQueryAndRecordSetRows() throws Exception {
+
+		Query query = new Query().setSql("select * from syn123");
+
+		AddToDownloadListStatsRequest request = new AddToDownloadListStatsRequest().setRequest(
+			addRequest.setQuery(query)
+		);
+
+		when(mockTableQueryManager.querySinglePage(mockProgressCallback, userOne, query, new QueryOptions().withRunSumFileSizes(true)))
+			.thenReturn(new QueryResultBundle().setSumFileSizes(new SumFileSizes().setSumFileSizesBytes(1300L).setGreaterThan(false)));
+
+		when(mockTableManagerSupport.getTableType(any())).thenReturn(TableType.entityview);
+		when(mockTableManagerSupport.getTableSchema(any())).thenReturn(List.of(createColumn(123L, "foo", ColumnType.STRING)));
+		when(mockTableQueryManager.querySinglePage(any(), any(), any(), eq(new QueryOptions().withRunQuery(true))))
+			.thenReturn(new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(List.of(
+				new Row().setValues(List.of("111", "1")), new Row().setValues(List.of("222", "1")))))));
+		// A recordset is a file type just like a file, so both count toward the file row total.
+		when(mockDownloadListDao.groupItemsByType(any(), any())).thenReturn(Map.of(
+			EntityType.file, List.of(new DownloadListItem().setFileEntityId("111").setVersionNumber(1L)),
+			EntityType.recordset, List.of(new DownloadListItem().setFileEntityId("222").setVersionNumber(1L))));
+
+		AddToDownloadListStatsResponse expectedResponse = new AddToDownloadListStatsResponse()
+			.setFileCount(2L)
+			.setFileSize(1300L)
+			.setIsFileCountAndSizeEstimate(false);
+
+		// Call under test
+		AddToDownloadListStatsResponse result = manager.getAddToDownloadListStats(mockProgressCallback, userOne, request);
+
+		assertEquals(expectedResponse, result);
+	}
+
+	@Test
+	public void testGetAddToDownloadListStatsWithQueryAndUseVersionFalse() throws Exception {
+
+		Query query = new Query().setSql("select * from syn123");
+
+		AddToDownloadListStatsRequest request = new AddToDownloadListStatsRequest().setRequest(
+			addRequest.setQuery(query).setUseVersionNumber(false)
+		);
+
+		when(mockTableQueryManager.querySinglePage(mockProgressCallback, userOne, query, new QueryOptions().withRunSumFileSizes(true)))
+			.thenReturn(new QueryResultBundle().setSumFileSizes(new SumFileSizes().setSumFileSizesBytes(1300L).setGreaterThan(false)));
+
+		when(mockTableManagerSupport.getTableType(any())).thenReturn(TableType.entityview);
+		when(mockTableManagerSupport.getTableSchema(any())).thenReturn(List.of(createColumn(123L, "foo", ColumnType.STRING)));
+		when(mockTableQueryManager.querySinglePage(any(), any(), any(), eq(new QueryOptions().withRunQuery(true))))
+			.thenReturn(new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(List.of(
+				new Row().setValues(List.of("111")), new Row().setValues(List.of("222")))))));
+		when(mockDownloadListDao.groupItemsByType(any(), any())).thenReturn(Map.of(
+			EntityType.file, List.of(new DownloadListItem().setFileEntityId("111").setVersionNumber(null)),
+			EntityType.dataset, List.of(new DownloadListItem().setFileEntityId("222").setVersionNumber(null))));
+
+		// The row carries no version, so the dataset's current version must be resolved before it can
+		// be expanded, exactly as the add path does.
+		when(mockNodeDao.getCurrentRevisionNumbers(List.of("222")))
+			.thenReturn(List.of(new Reference().setTargetId("222").setTargetVersionNumber(9L)));
+
+		List<EntityRef> expectedRefs = List.of(new EntityRef().setEntityId("222").setVersionNumber(9L));
+		when(mockDownloadListDao.getAddDatasetEntityRefFilesToDownloadListStats(expectedRefs))
+			.thenReturn(new AddToDownloadListStatsResponse().setFileCount(4L).setFileSize(77L).setIsFileCountAndSizeEstimate(false));
+
+		// The one file row plus the 4 files the dataset expands to. No overlap is possible: a file row
+		// with no version is stored against NULL_VERSION_NUMBER, which never equals the concrete version
+		// a dataset's items record, so the add path inserts both.
+		AddToDownloadListStatsResponse expectedResponse = new AddToDownloadListStatsResponse()
+			.setFileCount(5L)
+			.setFileSize(1300L)
+			.setIsFileCountAndSizeEstimate(false);
+
+		// Call under test
+		AddToDownloadListStatsResponse result = manager.getAddToDownloadListStats(mockProgressCallback, userOne, request);
+
+		assertEquals(expectedResponse, result);
+		// Only the dataset row needs a current-version lookup; the file rows must not trigger one.
+		verify(mockNodeDao, times(1)).getCurrentRevisionNumbers(List.of("222"));
+		// No file refs are retained, so the overlap query has nothing to look for.
+		verify(mockDownloadListDao).countFileRefsInDatasets(Collections.emptyList(), expectedRefs);
+		// Without a version the rewrite selects only the id column, matching the add path.
+		verify(mockTableQueryManager).querySinglePage(mockProgressCallback, userOne,
+			new Query().setSql("SELECT \"ROW_ID\" FROM syn123 ORDER BY \"ROW_ID\"")
+				.setLimit(DownloadListManagerImpl.MAX_QUERY_PAGE_SIZE).setOffset(0L),
+			new QueryOptions().withRunQuery(true));
+	}
+
+	@Test
+	public void testGetAddToDownloadListStatsWithQueryAndDatasetRowsOverCap() throws Exception {
+
+		Query query = new Query().setSql("select * from syn123");
+
+		AddToDownloadListStatsRequest request = new AddToDownloadListStatsRequest().setRequest(
+			addRequest.setQuery(query)
+		);
+
+		// The index is asked only for the file size sum. The count is derived from the row scan below,
+		// so that it cannot disagree with the rows the add path would actually resolve.
+		QueryOptions expectedOptions = new QueryOptions()
+			.withRunSumFileSizes(true);
+
+		when(mockTableQueryManager.querySinglePage(mockProgressCallback, userOne, query, expectedOptions))
+			.thenReturn(new QueryResultBundle().setSumFileSizes(new SumFileSizes().setSumFileSizesBytes(1300L).setGreaterThan(false)));
+
+		when(mockTableManagerSupport.getTableType(any())).thenReturn(TableType.entityview);
+		when(mockTableManagerSupport.getTableSchema(any())).thenReturn(List.of(createColumn(123L, "foo", ColumnType.STRING)));
+
+		// 501 dataset rows - one more than FILE_STATS_MAX_CONTAINERS_COUNT (500).
+		List<DownloadListItem> datasetItems = IntStream.range(0, 501).boxed()
+				.map(i -> new DownloadListItem().setFileEntityId("syn" + i).setVersionNumber(1L))
+				.collect(Collectors.toList());
+		List<EntityRef> datasetRefs = datasetItems.stream()
+				.map(item -> new EntityRef().setEntityId(item.getFileEntityId()).setVersionNumber(item.getVersionNumber()))
+				.collect(Collectors.toList());
+		List<Row> rows = datasetItems.stream()
+				.map(item -> new Row().setValues(List.of(item.getFileEntityId(), "1")))
+				.collect(Collectors.toList());
+
+		when(mockTableQueryManager.querySinglePage(any(), any(), any(), eq(new QueryOptions().withRunQuery(true))))
+			.thenReturn(new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(rows))));
+		when(mockDownloadListDao.groupItemsByType(any(), any())).thenReturn(Map.of(EntityType.dataset, datasetItems));
+
+		when(mockDownloadListDao.getAddDatasetEntityRefFilesToDownloadListStats(datasetRefs.subList(0, 500)))
+			.thenReturn(new AddToDownloadListStatsResponse().setFileCount(500L).setFileSize(999L).setIsFileCountAndSizeEstimate(false));
+
+		// No plain file rows, and only the first 500 datasets are expanded, so the count is the 500
+		// files those yielded. The 501st dataset contributes nothing, which is why the response is
+		// explicitly flagged as an estimate rather than reported as exact.
+		AddToDownloadListStatsResponse expectedResponse = new AddToDownloadListStatsResponse()
+			.setFileCount(500L)
+			.setFileSize(1300L)
+			.setIsFileCountAndSizeEstimate(true);
+
+		// Call under test
+		AddToDownloadListStatsResponse result = manager.getAddToDownloadListStats(mockProgressCallback, userOne, request);
+
+		assertEquals(expectedResponse, result);
+		// Only the first 500 refs reach the DAO.
+		verify(mockDownloadListDao).getAddDatasetEntityRefFilesToDownloadListStats(datasetRefs.subList(0, 500));
+	}
+
+	@Test
+	public void testGetAddToDownloadListStatsWithQueryAndDatasetRowOnLaterPage() throws Exception {
+
+		Query query = new Query().setSql("select * from syn123");
+
+		AddToDownloadListStatsRequest request = new AddToDownloadListStatsRequest().setRequest(
+			addRequest.setQuery(query)
+		);
+
+		// The index is asked only for the file size sum. The count is derived from the row scan below,
+		// so that it cannot disagree with the rows the add path would actually resolve.
+		QueryOptions expectedOptions = new QueryOptions()
+			.withRunSumFileSizes(true);
+
+		when(mockTableQueryManager.querySinglePage(mockProgressCallback, userOne, query, expectedOptions))
+			.thenReturn(new QueryResultBundle().setSumFileSizes(new SumFileSizes().setSumFileSizesBytes(1300L).setGreaterThan(false)));
+
+		when(mockTableManagerSupport.getTableType(any())).thenReturn(TableType.entityview);
+		when(mockTableManagerSupport.getTableSchema(any())).thenReturn(List.of(createColumn(123L, "foo", ColumnType.STRING)));
+
+		// Page 1 is a full page (MAX_QUERY_PAGE_SIZE rows) of plain files, so the scan must continue.
+		int pageOneSize = (int) DownloadListManagerImpl.MAX_QUERY_PAGE_SIZE;
+		List<Row> pageOneRows = IntStream.range(0, pageOneSize).boxed()
+				.map(i -> new Row().setValues(List.of("syn" + i, "1")))
+				.collect(Collectors.toList());
+		List<DownloadListItem> pageOneItems = IntStream.range(0, pageOneSize).boxed()
+				.map(i -> new DownloadListItem().setFileEntityId("syn" + i).setVersionNumber(1L))
+				.collect(Collectors.toList());
+		// Page 2 has a single Dataset row.
+		DownloadListItem datasetItem = new DownloadListItem().setFileEntityId("999").setVersionNumber(1L);
+		List<Row> pageTwoRows = List.of(new Row().setValues(List.of("999", "1")));
+
+		when(mockTableQueryManager.querySinglePage(any(), any(), any(), eq(new QueryOptions().withRunQuery(true))))
+			.thenReturn(
+				new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(pageOneRows))),
+				new QueryResultBundle().setQueryResult(new QueryResult().setQueryResults(new RowSet().setRows(pageTwoRows))));
+		when(mockDownloadListDao.groupItemsByType(any(), any()))
+			.thenReturn(Map.of(EntityType.file, pageOneItems), Map.of(EntityType.dataset, List.of(datasetItem)));
+
+		List<EntityRef> expectedRefs = List.of(new EntityRef().setEntityId("999").setVersionNumber(1L));
+		when(mockDownloadListDao.getAddDatasetEntityRefFilesToDownloadListStats(expectedRefs))
+			.thenReturn(new AddToDownloadListStatsResponse().setFileCount(4L).setFileSize(50L).setIsFileCountAndSizeEstimate(false));
+
+		// The 10,000 file rows from page 1 plus the 4 files the page-2 dataset expands to.
+		AddToDownloadListStatsResponse expectedResponse = new AddToDownloadListStatsResponse()
+			.setFileCount(pageOneSize + 4L)
+			.setFileSize(1300L)
+			.setIsFileCountAndSizeEstimate(false);
+
+		// Call under test
+		AddToDownloadListStatsResponse result = manager.getAddToDownloadListStats(mockProgressCallback, userOne, request);
+
+		assertEquals(expectedResponse, result);
+		// Detection is not limited to a single page, and the second page is requested at the offset
+		// immediately following the first.
+		String rewrittenSql = "SELECT \"ROW_ID\", \"ROW_VERSION\" FROM syn123 ORDER BY \"ROW_ID\", \"ROW_VERSION\"";
+		verify(mockTableQueryManager, times(2)).querySinglePage(any(), any(), any(), eq(new QueryOptions().withRunQuery(true)));
+		verify(mockTableQueryManager).querySinglePage(mockProgressCallback, userOne, new Query().setSql(rewrittenSql)
+			.setLimit(DownloadListManagerImpl.MAX_QUERY_PAGE_SIZE).setOffset(0L), new QueryOptions().withRunQuery(true));
+		verify(mockTableQueryManager).querySinglePage(mockProgressCallback, userOne, new Query().setSql(rewrittenSql)
+			.setLimit(DownloadListManagerImpl.MAX_QUERY_PAGE_SIZE).setOffset(DownloadListManagerImpl.MAX_QUERY_PAGE_SIZE),
+			new QueryOptions().withRunQuery(true));
+		verify(mockDownloadListDao).getAddDatasetEntityRefFilesToDownloadListStats(expectedRefs);
+	}
+
 	@Test
 	public void testGetAddToDownloadListStatsWithQueryWithRecoverableEx() throws Exception {
 
@@ -2564,8 +3319,9 @@ public class DownloadListManagerImplTest {
 			addRequest.setQuery(query)
 		);
 		
+		// The index is asked only for the file size sum. The count is derived from the row scan below,
+		// so that it cannot disagree with the rows the add path would actually resolve.
 		QueryOptions expectedOptions = new QueryOptions()
-			.withRunCount(true)
 			.withRunSumFileSizes(true);
 		
 		when(mockTableQueryManager.querySinglePage(mockProgressCallback, userOne, query, expectedOptions))
@@ -2592,8 +3348,9 @@ public class DownloadListManagerImplTest {
 			addRequest.setQuery(query)
 		);
 		
+		// The index is asked only for the file size sum. The count is derived from the row scan below,
+		// so that it cannot disagree with the rows the add path would actually resolve.
 		QueryOptions expectedOptions = new QueryOptions()
-			.withRunCount(true)
 			.withRunSumFileSizes(true);
 		
 		when(mockTableQueryManager.querySinglePage(mockProgressCallback, userOne, query, expectedOptions))
@@ -2620,8 +3377,9 @@ public class DownloadListManagerImplTest {
 			addRequest.setQuery(query)
 		);
 		
+		// The index is asked only for the file size sum. The count is derived from the row scan below,
+		// so that it cannot disagree with the rows the add path would actually resolve.
 		QueryOptions expectedOptions = new QueryOptions()
-			.withRunCount(true)
 			.withRunSumFileSizes(true);
 		
 		when(mockTableQueryManager.querySinglePage(mockProgressCallback, userOne, query, expectedOptions))

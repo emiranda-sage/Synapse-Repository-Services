@@ -30,8 +30,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.json.JSONObject;
@@ -1429,7 +1432,97 @@ public class DownloadListDaoImplTest {
 		List<DownloadListItem> results = downloadListDao.filterUnsupportedTypes(toFilter);
 		assertEquals(Collections.emptyList(), results);
 	}
-	
+
+	@Test
+	public void testGroupItemsByTypeWithFilesAndDatasets() {
+		int numberOfProject = 1;
+		int foldersPerProject = 1;
+		int filesPerFolder = 4;
+		List<Node> files = createFileHierarchy(numberOfProject, foldersPerProject, filesPerFolder);
+		int filesPerDataset = 2;
+		List<EntityRef> datasets = createDatasets(files, filesPerDataset);
+		assertEquals(2, datasets.size());
+
+		Node folder = nodeDao.getNode(files.get(0).getParentId());
+		assertEquals(EntityType.folder, folder.getNodeType());
+
+		List<DownloadListItem> fileItems = files.stream()
+				.map(f -> new DownloadListItem().setFileEntityId(f.getId()).setVersionNumber(f.getVersionNumber()))
+				.collect(Collectors.toList());
+		List<DownloadListItem> datasetItems = datasets.stream()
+				.map(d -> new DownloadListItem().setFileEntityId(d.getEntityId()).setVersionNumber(d.getVersionNumber()))
+				.collect(Collectors.toList());
+		// A decoy that exists in the DB but is of a type that was not asked for.
+		DownloadListItem folderItem = new DownloadListItem().setFileEntityId(folder.getId());
+		// A decoy that does not exist in the DB at all.
+		DownloadListItem unknownItem = new DownloadListItem().setFileEntityId("syn999999999");
+
+		// Interleaved, and deliberately NOT in ascending id order. Building the batch as
+		// files-then-datasets in id order would coincide with the order the rows come back from the
+		// database, so an implementation that grouped by iterating the ResultSet instead of the batch
+		// would pass. This ordering only holds if the batch itself drives the grouping.
+		List<DownloadListItem> batch = Arrays.asList(fileItems.get(3), datasetItems.get(1), fileItems.get(0),
+				folderItem, fileItems.get(2), datasetItems.get(0), unknownItem, fileItems.get(1));
+
+		// Note: project is included in the requested types but has no matching items in the batch.
+		Set<EntityType> types = new HashSet<>(Arrays.asList(EntityType.file, EntityType.dataset, EntityType.project));
+
+		// call under test
+		Map<EntityType, List<DownloadListItem>> result = downloadListDao.groupItemsByType(batch, types);
+
+		assertEquals(2, result.size());
+		assertEquals(Arrays.asList(fileItems.get(3), fileItems.get(0), fileItems.get(2), fileItems.get(1)),
+				result.get(EntityType.file));
+		assertEquals(Arrays.asList(datasetItems.get(1), datasetItems.get(0)), result.get(EntityType.dataset));
+		// folder was excluded because it was not in the requested types, even though it exists.
+		assertFalse(result.containsKey(EntityType.folder));
+		// project was requested but had no matching items, so it must be absent, not an empty list.
+		assertFalse(result.containsKey(EntityType.project));
+	}
+
+	@Test
+	public void testGroupItemsByTypeWithNullBatch() {
+		List<DownloadListItem> batch = null;
+		Set<EntityType> types = new HashSet<>(Arrays.asList(EntityType.file));
+		String message = assertThrows(IllegalArgumentException.class, () -> {
+			// call under test
+			downloadListDao.groupItemsByType(batch, types);
+		}).getMessage();
+		assertEquals("batch is required.", message);
+	}
+
+	@Test
+	public void testGroupItemsByTypeWithNullTypes() {
+		List<DownloadListItem> batch = Collections.emptyList();
+		Set<EntityType> types = null;
+		String message = assertThrows(IllegalArgumentException.class, () -> {
+			// call under test
+			downloadListDao.groupItemsByType(batch, types);
+		}).getMessage();
+		assertEquals("types is required.", message);
+	}
+
+	@Test
+	public void testGroupItemsByTypeWithEmptyBatch() {
+		List<DownloadListItem> batch = Collections.emptyList();
+		Set<EntityType> types = new HashSet<>(Arrays.asList(EntityType.file));
+		// call under test
+		Map<EntityType, List<DownloadListItem>> result = downloadListDao.groupItemsByType(batch, types);
+		assertEquals(Collections.emptyMap(), result);
+	}
+
+	@Test
+	public void testGroupItemsByTypeWithEmptyTypes() {
+		List<Node> files = createFileHierarchy(1, 1, 1);
+		List<DownloadListItem> batch = Arrays.asList(new DownloadListItem().setFileEntityId(files.get(0).getId())
+				.setVersionNumber(files.get(0).getVersionNumber()));
+		// An empty type set matches nothing, and must not be rendered into the SQL as 'IN ()'.
+		Set<EntityType> types = Collections.emptySet();
+		// call under test
+		Map<EntityType, List<DownloadListItem>> result = downloadListDao.groupItemsByType(batch, types);
+		assertEquals(Collections.emptyMap(), result);
+	}
+
 	@Test
 	public void testGetListStatistics() {
 		int numberOfProject = 2;
@@ -2940,10 +3033,326 @@ public class DownloadListDaoImplTest {
 		
 		// call under test
 		AddToDownloadListStatsResponse result = downloadListDao.getAddDatasetEntityRefFilesToDownloadListStats(datasets);
-		
+
 		assertEquals(expected, result);
 	}
-	
+
+	@Test
+	public void testExpandDatasetCollectionRefs() {
+		int numberOfProject = 1;
+		int foldersPerProject = 2;
+		int filesPerFolder = 10;
+		int filesPerDataset = 5;
+
+		List<Node> files = createFileHierarchy(numberOfProject, foldersPerProject, filesPerFolder);
+		List<EntityRef> datasets = createDatasets(files, filesPerDataset);
+		assertEquals(4, datasets.size());
+
+		String parentId = files.get(0).getParentId();
+
+		Node collectionOne = nodeDaoHelper.create(n -> {
+			n.setName("collectionOne");
+			n.setParentId(parentId);
+			n.setNodeType(EntityType.datasetcollection);
+			n.setItems(List.of(datasets.get(0), datasets.get(1)));
+		});
+		Node collectionTwo = nodeDaoHelper.create(n -> {
+			n.setName("collectionTwo");
+			n.setParentId(parentId);
+			n.setNodeType(EntityType.datasetcollection);
+			// datasets.get(1) is shared with collectionOne, to exercise de-duplication.
+			n.setItems(List.of(datasets.get(1), datasets.get(2)));
+		});
+
+		List<EntityRef> collectionRefs = List.of(
+				new EntityRef().setEntityId(collectionOne.getId()).setVersionNumber(collectionOne.getVersionNumber()),
+				new EntityRef().setEntityId(collectionTwo.getId()).setVersionNumber(collectionTwo.getVersionNumber()));
+
+		// call under test
+		List<EntityRef> results = downloadListDao.expandDatasetCollectionRefs(collectionRefs);
+
+		assertEquals(new HashSet<>(List.of(datasets.get(0), datasets.get(1), datasets.get(2))), new HashSet<>(results));
+		// The dataset shared by both collections must be reported only once.
+		assertEquals(3, results.size());
+	}
+
+	@Test
+	public void testExpandDatasetCollectionRefsWithSameDatasetAtDifferentVersions() {
+		List<Node> files = createFileHierarchy(1, 1, 2);
+		String parentId = files.get(0).getParentId();
+
+		Node datasetNode = nodeDaoHelper.create(n -> {
+			n.setName("aDataset");
+			n.setParentId(parentId);
+			n.setNodeType(EntityType.dataset);
+			n.setItems(List.of(new EntityRef().setEntityId(files.get(0).getId())
+					.setVersionNumber(files.get(0).getVersionNumber())));
+		});
+		EntityRef datasetV1 = new EntityRef().setEntityId(datasetNode.getId()).setVersionNumber(1L);
+
+		datasetNode.setItems(List.of(new EntityRef().setEntityId(files.get(1).getId())
+				.setVersionNumber(files.get(1).getVersionNumber())));
+		datasetNode.setVersionLabel("v2");
+		nodeDao.createNewVersion(datasetNode);
+		EntityRef datasetV2 = new EntityRef().setEntityId(datasetNode.getId()).setVersionNumber(2L);
+
+		// One collection referencing the same dataset at two different versions.
+		Node collection = nodeDaoHelper.create(n -> {
+			n.setName("aCollection");
+			n.setParentId(parentId);
+			n.setNodeType(EntityType.datasetcollection);
+			n.setItems(List.of(datasetV1, datasetV2));
+		});
+
+		// call under test
+		List<EntityRef> results = downloadListDao.expandDatasetCollectionRefs(List.of(
+				new EntityRef().setEntityId(collection.getId()).setVersionNumber(collection.getVersionNumber())));
+
+		// De-duplication is on the (id, version) pair, so two versions of one dataset are two refs.
+		assertEquals(new HashSet<>(List.of(datasetV1, datasetV2)), new HashSet<>(results));
+		assertEquals(2, results.size());
+	}
+
+	@Test
+	public void testCountFileRefsInDatasetsWithOverlap() {
+		List<Node> files = createFileHierarchy(1, 1, 3);
+		// One dataset holding the first two files.
+		List<EntityRef> datasets = createDatasets(files.subList(0, 2), 2);
+		assertEquals(1, datasets.size());
+
+		List<EntityRef> fileRefs = files.stream()
+				.map(f -> new EntityRef().setEntityId(f.getId()).setVersionNumber(f.getVersionNumber()))
+				.collect(Collectors.toList());
+
+		// call under test
+		long count = downloadListDao.countFileRefsInDatasets(fileRefs, datasets);
+
+		// Two of the three file refs are members of the dataset; the third is not.
+		assertEquals(2L, count);
+	}
+
+	@Test
+	public void testCountFileRefsInDatasetsWithFileInMultipleDatasets() {
+		List<Node> files = createFileHierarchy(1, 1, 1);
+		String parentId = files.get(0).getParentId();
+		EntityRef fileRef = new EntityRef().setEntityId(files.get(0).getId())
+				.setVersionNumber(files.get(0).getVersionNumber());
+
+		Node datasetOne = nodeDaoHelper.create(n -> {
+			n.setName("datasetOne");
+			n.setParentId(parentId);
+			n.setNodeType(EntityType.dataset);
+			n.setItems(List.of(fileRef));
+		});
+		Node datasetTwo = nodeDaoHelper.create(n -> {
+			n.setName("datasetTwo");
+			n.setParentId(parentId);
+			n.setNodeType(EntityType.dataset);
+			n.setItems(List.of(fileRef));
+		});
+
+		List<EntityRef> datasetRefs = List.of(
+				new EntityRef().setEntityId(datasetOne.getId()).setVersionNumber(datasetOne.getVersionNumber()),
+				new EntityRef().setEntityId(datasetTwo.getId()).setVersionNumber(datasetTwo.getVersionNumber()));
+
+		// call under test
+		long count = downloadListDao.countFileRefsInDatasets(List.of(fileRef), datasetRefs);
+
+		// The file is a member of both datasets but must be counted once, because the member count this
+		// value is subtracted from also counts it once.
+		assertEquals(1L, count);
+	}
+
+	@Test
+	public void testCountFileRefsInDatasetsWithNoOverlap() {
+		List<Node> files = createFileHierarchy(1, 1, 2);
+		List<EntityRef> datasets = createDatasets(files.subList(0, 1), 1);
+		assertEquals(1, datasets.size());
+
+		// A file ref that is not a member of the dataset.
+		EntityRef otherFile = new EntityRef().setEntityId(files.get(1).getId())
+				.setVersionNumber(files.get(1).getVersionNumber());
+
+		// call under test
+		long count = downloadListDao.countFileRefsInDatasets(List.of(otherFile), datasets);
+
+		assertEquals(0L, count);
+	}
+
+	@Test
+	public void testCountFileRefsInDatasetsWithDifferentVersion() {
+		List<Node> files = createFileHierarchy(1, 1, 1);
+		Node file = files.get(0);
+		assertEquals(2L, file.getVersionNumber().longValue());
+
+		// The dataset pins version 2 of the file.
+		List<EntityRef> datasets = createDatasets(List.of(file), 1);
+		assertEquals(1, datasets.size());
+
+		// The same entity at version 1 is a different item as far as the download list is concerned, so
+		// it must not be treated as an overlap.
+		EntityRef fileAtVersionOne = new EntityRef().setEntityId(file.getId()).setVersionNumber(1L);
+
+		// call under test
+		long count = downloadListDao.countFileRefsInDatasets(List.of(fileAtVersionOne), datasets);
+
+		assertEquals(0L, count);
+	}
+
+	@Test
+	public void testCountFileRefsInDatasetsWithEmptyFileRefs() {
+		List<EntityRef> datasetRefs = List.of(new EntityRef().setEntityId("syn123").setVersionNumber(1L));
+		// call under test
+		assertEquals(0L, downloadListDao.countFileRefsInDatasets(Collections.emptyList(), datasetRefs));
+	}
+
+	@Test
+	public void testCountFileRefsInDatasetsWithEmptyDatasetRefs() {
+		List<EntityRef> fileRefs = List.of(new EntityRef().setEntityId("syn123").setVersionNumber(1L));
+		// call under test
+		assertEquals(0L, downloadListDao.countFileRefsInDatasets(fileRefs, Collections.emptyList()));
+	}
+
+	@Test
+	public void testCountFileRefsInDatasetsWithNullFileRefs() {
+		List<EntityRef> datasetRefs = Collections.emptyList();
+		String message = assertThrows(IllegalArgumentException.class, () -> {
+			// call under test
+			downloadListDao.countFileRefsInDatasets(null, datasetRefs);
+		}).getMessage();
+		assertEquals("fileRefs is required.", message);
+	}
+
+	@Test
+	public void testCountFileRefsInDatasetsWithNullDatasetRefs() {
+		List<EntityRef> fileRefs = Collections.emptyList();
+		String message = assertThrows(IllegalArgumentException.class, () -> {
+			// call under test
+			downloadListDao.countFileRefsInDatasets(fileRefs, null);
+		}).getMessage();
+		assertEquals("datasetRefs is required.", message);
+	}
+
+	@Test
+	public void testExpandDatasetCollectionRefsWithUnresolvableItem() {
+		List<Node> files = createFileHierarchy(1, 1, 2);
+		List<EntityRef> datasets = createDatasets(files, 1);
+		assertEquals(2, datasets.size());
+		String parentId = files.get(0).getParentId();
+
+		EntityRef missingDataset = new EntityRef().setEntityId("syn999999999").setVersionNumber(1L);
+		EntityRef missingVersion = new EntityRef().setEntityId(datasets.get(1).getEntityId()).setVersionNumber(99L);
+
+		Node collection = nodeDaoHelper.create(n -> {
+			n.setName("aCollection");
+			n.setParentId(parentId);
+			n.setNodeType(EntityType.datasetcollection);
+			n.setItems(List.of(datasets.get(0), missingDataset, missingVersion));
+		});
+
+		// call under test
+		List<EntityRef> results = downloadListDao.expandDatasetCollectionRefs(List.of(
+				new EntityRef().setEntityId(collection.getId()).setVersionNumber(collection.getVersionNumber())));
+
+		// Items that do not resolve to a real revision are dropped rather than returned as refs that
+		// silently match nothing downstream.
+		assertEquals(List.of(datasets.get(0)), results);
+	}
+
+	@Test
+	public void testExpandDatasetCollectionRefsWithOldVersion() {
+		int numberOfProject = 1;
+		int foldersPerProject = 1;
+		int filesPerFolder = 4;
+		List<Node> files = createFileHierarchy(numberOfProject, foldersPerProject, filesPerFolder);
+		String parentId = files.get(0).getParentId();
+
+		Node datasetOneNode = nodeDaoHelper.create(n -> {
+			n.setName("datasetOne");
+			n.setParentId(parentId);
+			n.setNodeType(EntityType.dataset);
+			n.setItems(List.of(new EntityRef().setEntityId(files.get(0).getId())
+					.setVersionNumber(files.get(0).getVersionNumber())));
+		});
+		EntityRef datasetOne = new EntityRef().setEntityId(datasetOneNode.getId())
+				.setVersionNumber(datasetOneNode.getVersionNumber());
+
+		Node datasetTwoNode = nodeDaoHelper.create(n -> {
+			n.setName("datasetTwo");
+			n.setParentId(parentId);
+			n.setNodeType(EntityType.dataset);
+			n.setItems(List.of(new EntityRef().setEntityId(files.get(1).getId())
+					.setVersionNumber(files.get(1).getVersionNumber())));
+		});
+		EntityRef datasetTwo = new EntityRef().setEntityId(datasetTwoNode.getId())
+				.setVersionNumber(datasetTwoNode.getVersionNumber());
+
+		Node collection = nodeDaoHelper.create(n -> {
+			n.setName("aCollection");
+			n.setParentId(parentId);
+			n.setNodeType(EntityType.datasetcollection);
+			n.setItems(List.of(datasetOne));
+		});
+		EntityRef collectionV1Ref = new EntityRef().setEntityId(collection.getId())
+				.setVersionNumber(collection.getVersionNumber());
+		assertEquals(1L, collectionV1Ref.getVersionNumber());
+
+		// Create a second version of the collection that now points to datasetTwo instead of
+		// datasetOne.
+		collection.setItems(List.of(datasetTwo));
+		collection.setVersionLabel("v2");
+		nodeDao.createNewVersion(collection);
+		Node collectionV2 = nodeDao.getNode(collection.getId());
+		assertEquals(2L, collectionV2.getVersionNumber().longValue());
+		// Assert the precondition this test depends on: the two versions really do hold different
+		// items. Without this, a regression that stopped propagating items onto a new version would
+		// make both answers identical and leave this test silently proving nothing.
+		assertEquals(List.of(datasetTwo), collectionV2.getItems());
+		EntityRef collectionV2Ref = new EntityRef().setEntityId(collection.getId())
+				.setVersionNumber(collectionV2.getVersionNumber());
+
+		// call under test: ask for the OLD (version 1) ref specifically.
+		List<EntityRef> oldResults = downloadListDao.expandDatasetCollectionRefs(List.of(collectionV1Ref));
+
+		// Must return what version 1 actually contained (datasetOne), not what the collection
+		// currently contains (datasetTwo). This is exactly the mistake looping over
+		// NodeDAO.getNodeItems (which always reads the current revision) would make.
+		assertEquals(List.of(datasetOne), oldResults);
+
+		// call under test: the same call for version 2 must track the requested version, rather than
+		// always returning the first or the current revision.
+		List<EntityRef> currentResults = downloadListDao.expandDatasetCollectionRefs(List.of(collectionV2Ref));
+
+		assertEquals(List.of(datasetTwo), currentResults);
+	}
+
+	@Test
+	public void testExpandDatasetCollectionRefsWithNullCollectionRefs() {
+		List<EntityRef> collectionRefs = null;
+		String message = assertThrows(IllegalArgumentException.class, () -> {
+			// call under test
+			downloadListDao.expandDatasetCollectionRefs(collectionRefs);
+		}).getMessage();
+		assertEquals("collectionRefs is required.", message);
+	}
+
+	@Test
+	public void testExpandDatasetCollectionRefsWithEmptyCollectionRefs() {
+		List<EntityRef> collectionRefs = Collections.emptyList();
+		// call under test
+		List<EntityRef> results = downloadListDao.expandDatasetCollectionRefs(collectionRefs);
+		assertEquals(Collections.emptyList(), results);
+	}
+
+	@Test
+	public void testExpandDatasetCollectionRefsWithNoMatchingCollection() {
+		// A ref for an id/version that does not exist should simply contribute nothing.
+		List<EntityRef> collectionRefs = List.of(new EntityRef().setEntityId("syn999999999").setVersionNumber(1L));
+		// call under test
+		List<EntityRef> results = downloadListDao.expandDatasetCollectionRefs(collectionRefs);
+		assertEquals(Collections.emptyList(), results);
+	}
+
 	/**
 	 * Helper to compare two JSON objects.
 	 * @param one
